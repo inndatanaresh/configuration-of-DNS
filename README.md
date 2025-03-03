@@ -10,9 +10,40 @@ Edit the named configuration file:
 ```bash
 vi /etc/named.conf
 ```
-Add the master IP and subnet mask.
+Add the master IP and subnet mask, as shown below:
 
-Also, add the zone entries for forward and reverse lookup.
+```bash
+// See the BIND Administrator's Reference Manual (ARM) for details about the  
+// configuration located in /usr/share/doc/bind-{version}/Bv9ARM.html  
+  
+options {  
+    listen-on port 53 { 127.0.0.1; 10.10.5.82; };  
+    listen-on-v6 port 53 { ::1; };  
+    directory "/var/named";  
+    dump-file "/var/named/data/cache_dump.db";  
+    statistics-file "/var/named/data/named_stats.txt";  
+    memstatistics-file "/var/named/data/named_mem_stats.txt";  
+    recursing-file "/var/named/data/named.recursing";  
+    secroots-file "/var/named/data/named.secroots";  
+    allow-query { localhost; 10.10.5.0/24; };  
+};  
+```
+
+Also, add the zone entries for forward and reverse lookup:
+
+```bash
+zone "inndata.local" IN {  
+    type master;  
+    file "forward.unixmen";  
+    allow-update { none; };  
+};  
+
+zone "5.10.10.in-addr.arpa" IN {  
+    type master;  
+    file "reverse.unixmen";  
+    allow-update { none; };  
+};  
+```
 
 ---
 
@@ -51,7 +82,7 @@ vi /var/named/reverse.unixmen
 
 **Content of the Reverse Zone File:**
 ```bash
-TTL 86400
+$TTL 86400
 @   IN  SOA     masterdns.inndata.local. root.unixmen.local. (
         2011071001  ;Serial
         3600        ;Refresh
@@ -123,16 +154,61 @@ systemctl restart network
 
 ---
 
-## **Step 10: Testing DNS Server**
-Test name resolution using ping:
+## **Step 10: Configure Network Settings**
+Edit the network configuration file:
 ```bash
-ping master.inndata.in
-ping slave.inndata.in
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+```
+**Content of ifcfg-eth0:**
+```bash
+TYPE="Ethernet"
+BOOTPROTO="none"
+DEFROUTE="yes"
+IPV4_FAILURE_FATAL="no"
+IPV6INIT="yes"
+IPV6_AUTOCONF="yes"
+IPV6_DEFROUTE="yes"
+IPV6_FAILURE_FATAL="no"
+NAME="enp0s3"
+UUID="5d0428b3-6af2-4f6b-9fe3-425dcd839efa"
+ONBOOT="yes"
+HWADDR="08:00:27:19:68:73"
+IPADDR0="192.168.1.101"
+PREFIX0="24"
+GATEWAY0="192.168.1.1"
+DNS="192.168.1.101"
+IPV6_PEERDNS="yes"
+IPV6_PEERROUTES="yes"
 ```
 
 ---
 
-## **Slave Configuration**
+## **Step 11: Configure /etc/hosts**
+Edit the hosts file:
+```bash
+vi /etc/hosts
+```
+**Content of /etc/hosts:**
+```bash
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+10.10.5.82  masterdns.inndata.local
+10.10.5.72  dns.inndata.internal
+```
+
+---
+
+## **Step 12: Testing DNS Server**
+Test name resolution using ping:
+```bash
+ping masterdns.inndata.local
+ping clint.inndata.local
+```
+
+---
+
+## **Step 13: Slave Configuration**
 1. Add the master IP in:
    - `/etc/resolv.conf`
    - `/etc/sysconfig/network-scripts/ifcfg-eth0`
@@ -143,3 +219,4 @@ ping slave.inndata.in
 
 ## **Conclusion**
 This setup ensures proper DNS resolution with forward and reverse zone configurations, allowing reliable hostname resolution across the network.
+
